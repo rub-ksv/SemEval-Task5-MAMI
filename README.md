@@ -1,7 +1,6 @@
 # SemEval-Task5-MAMI
 Implementation of our SemEval-Task5-MAMI challenge <a href="https://arxiv.org/abs/2204.03953">paper</a>.
 ### How to run the code
-* Download the pre-trained image-caption model from https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning, save the downloaded model "BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth" under `./local/imagecap`
 * run `run.sh` from the beginning
 ### File architecture
 * processed Dataset and features are saved in `./Dataset`
