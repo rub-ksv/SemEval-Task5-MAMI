@@ -1,9 +1,9 @@
 # SemEval-Task5-MAMI
-Implementation of our SemEval-Task5-MAMI challenge <a href="https://arxiv.org/abs/2204.03953">paper</a>. Different single-modal and multi-modal models are trained. Finally, we use the ensemble learning strategy to combine the results at different levels.
+Implementation of our SemEval-Task5-MAMI challenge <a href="https://arxiv.org/abs/2204.03953">paper</a>. Different uni-modal and multi-modal models are trained. Finally, we use the ensemble learning strategy to combine the results at different levels.
 ### How to run the code
 * run `run.sh` from the beginning
 ### File architecture
-* processed Dataset and features are saved in `./Dataset`
+* processed dataset and features are saved in `./Dataset`
 * trained models are saved in `./model`
 * results are saved in `./results`
 
