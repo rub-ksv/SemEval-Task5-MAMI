@@ -13,12 +13,25 @@ adjdir=./		# the dir save GCAN adjacency matrix
 stage=0			# which running process should be started
 stop_stage=0		# stop at which process
 
+## Function for pretrained model:  
+function gdrive_download () {
+    CONFIRM=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate \
+        "https://docs.google.com/uc?export=download&id=$1" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')
+    wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$CONFIRM&id=$1" -O $2
+    rm -rf /tmp/cookies.txt
+}
+
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 	### split MEMEs	
 	for dset in training test; do
 	     python3 local/orgimagesplit.py $datasetdir $dset || exit 1;
 	done
 
+	git clone https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning.git
+	mv a-PyTorch-Tutorial-to-Image-Captioning local/imagecap
+ 	cp local/caption_multisplit.py local/imagecap/caption_multisplit.py
+	gdrive_download '1FYZ446OPEqhe-uLkgyVICjD_3-N3IZn1'  'local/imagecap/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'|| exit 1;
+	gdrive_download '1bt_TmTC_rUcss2MJsG_C_6DtwEttRVKc'  'local/imagecap/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'|| exit 1;
 	### using image caption to extract the image-text description (https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning)
 	for dset in training test; do ## if the test set relased, here can add for dset in training test; do
 	    savedir=$datadir/imagecap

@@ -10,13 +10,12 @@ import skimage.transform
 import argparse
 import imageio
 import cv2
-#from scipy.misc.pilutil  import imread, imresize
 import multiprocessing as mp
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def caption_image_beam_search(encoder, decoder, image_path, word_map, rev_word_map, beam_size=3):
+def caption_image_beam_search(encoder, decoder, image_path, word_map, rev_word_map, device, beam_size=3):
     """
     Reads an image and captions it with beam search.
 
@@ -39,11 +38,9 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, rev_word_m
     if len(img.shape) == 2:
         img = img[:, :, np.newaxis]
         img = np.concatenate([img, img, img], axis=2)
-    #print(img.shape)
-    #vghcghjdgc
-    #img = np.resize(img, (256, 256))
+
     img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
-    #print(img.shape)
+
     img = img.transpose(2, 0, 1)
     img = img / 255.
     img = torch.FloatTensor(img).to(device)
@@ -52,7 +49,7 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, rev_word_m
 
     # Encode
     image = image.unsqueeze(0)  # (1, 3, 256, 256)
-    encoder_out = encoder(image)  # (1, enc_image_size, enc_image_size, encoder_dim)
+    encoder_out = encoder(image.to(device))  # (1, enc_image_size, enc_image_size, encoder_dim)
     enc_image_size = encoder_out.size(1)
     encoder_dim = encoder_out.size(3)
 
@@ -182,10 +179,12 @@ def product_helper(args):
     return caption_image_beam_search(*args)
 
 def main(imagedir, dset, savedir, maindir, ifgpu):
+
     if ifgpu == 'true':
         device = 'cuda'
     else:
         device = 'cpu'
+    print(device)
 
     model = os.path.join(maindir, './BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar')
     word_map = os.path.join(maindir, './WORDMAP_coco_5_cap_per_img_5_min_word_freq.json')
@@ -194,7 +193,7 @@ def main(imagedir, dset, savedir, maindir, ifgpu):
     if not os.path.exists(Savedir):
         os.makedirs(Savedir)
     # Load model
-    autherlist = os.listdir(os.path.join(imagedir, dset))
+    autherlist = os.listdir(os.path.join(imagedir, dset + '_split'))
     checkpoint = torch.load(model, map_location=str(device))
     decoder = checkpoint['decoder']
     decoder = decoder.to(device)
@@ -210,25 +209,43 @@ def main(imagedir, dset, savedir, maindir, ifgpu):
 
 
     resultdict = {}
-    autherlist.remove(dset + '.csv')
+    #autherlist.remove(dset + '.csv')
     for author in autherlist:
-        resultdict.update({author: {}})
-        img = os.path.join(imagedir, dset, author)
-        word = caption_image_beam_search(encoder, decoder, img, word_map, rev_word_map, beam_size)
-        resultdict[author].update(word)
+        resultdict.update({author + '.jpg': {}})
+        imgfolder = os.path.join(imagedir, dset + '_split', author)
+        imgorgfolder = os.path.join(imagedir, dset, author)
+        text = []
+        textdict = {}
+        imagelist = os.listdir(imgfolder)
+        if not imagelist:
+            imagedirsub = os.path.join(imgorgfolder + '.jpg')
+            word = caption_image_beam_search(encoder, decoder, imagedirsub, word_map, rev_word_map, device, beam_size)
+            text.append(list(word.values())[0])
+        else:
+            for i in imagelist:
+                imagedirsub = os.path.join(imgfolder, i)
+                try:
+                    word = caption_image_beam_search(encoder, decoder, imagedirsub, word_map, rev_word_map, device, beam_size)
+                    text.append(list(word.values())[0])
+                except:
+                    pass
+
+        text = list(set(text))
+        text = ' and '.join(text)
+        textdict.update({os.path.join(imagedir, dset, author): text})
+        resultdict[author + '.jpg'].update(textdict)
 
 
     with open(os.path.join(Savedir, dset + "_image_to_text.json"), 'w', encoding='utf-8') as json_file:
         json.dump(resultdict, json_file, ensure_ascii=False, indent=4)
 
-'''imagedir = './../../MAMI'
-dset = 'training'
-savedir = './../../Dataset/imagecap'
-maindir = './'
-ifgpu = 'true'
-main(imagedir, dset, savedir, maindir, ifgpu)'''
-
 if __name__ == '__main__':
+    # hand over parameter overview
+    # sys.argv[1] = imagedir (str): Dataset dir
+    # sys.argv[2] = dset (str): Which set.
+    # sys.argv[3] = savedir (str): The dir saves caption results
+    # sys.argv[4] = maindir (str): Image-caption code dir, where also saves the pre-trained image-caption model.
+    # sys.argv[5] = ifgpu (str): If use GPU for caption.
     main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
 
 
